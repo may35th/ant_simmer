@@ -1,18 +1,43 @@
 use bevy::{prelude::*, sprite, window::PrimaryWindow};
+use rand::prelude::*;
 
 
 pub const ANT_SIZE: f32 = 64.0 * 0.4;
-pub const ANT_SPEED: f32 = 400.0;
+pub const ANT_SPEED: f32 = 600.0;
+pub const ENEMY_COUNT: usize = 8;
 
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, spawn_camera)
-        .add_systems(PostStartup, (print_names, wagie_ants, neet_ants, spawn_ant))
+        .add_systems(PostStartup, (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy))
         .add_systems(Update, (ant_movement, confine_ant_movement))
         .run();
 }
+
+#[derive(Component)]
+pub struct Ant {
+    pub name: String
+}
+
+#[derive(Component)]
+pub struct Enemy {}
+
+
+#[derive(Component)]
+pub struct Employed {
+    pub job: Job
+}
+
+#[derive(Debug)]
+pub enum Job {
+    Worker,
+    Male,
+    Queen,
+    Larvae,
+}
+
 
 
 pub fn spawn_ant(
@@ -25,8 +50,7 @@ pub fn spawn_ant(
     commands.spawn(
         (
             SpriteBundle {
-                transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0)
-                .with_scale(Vec3::new(0.4, 0.4, 1.0)),
+                transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0).with_scale(Vec3::new(0.4, 0.4, 1.0)),
                 texture: asset_server.load("sprites/ball_blue_large.png"),
                 ..default()
             },
@@ -44,6 +68,24 @@ pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<Pr
         transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
         ..default()
     });
+}
+
+pub fn spawn_enemy(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>, asset_server: Res<AssetServer>) {
+    let window = window_query.get_single().unwrap();
+
+    for _ in 0..ENEMY_COUNT {
+        let random_x = random::<f32>() * window.width();
+        let random_y = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0).with_scale(Vec3::new(0.4, 0.4, 1.0)),
+                texture: asset_server.load("sprites/ball_red_large.png"),
+                ..default()
+            },
+            Enemy {},
+        ));
+    }
 }
 
 
@@ -111,23 +153,6 @@ pub fn confine_ant_movement(
     }
 }
 
-#[derive(Component)]
-pub struct Ant {
-    pub name: String
-}
-
-#[derive(Component)]
-pub struct Employed {
-    pub job: Job
-}
-
-#[derive(Debug)]
-pub enum Job {
-    Worker,
-    Male,
-    Queen,
-    Larvae,
-}
 
 
 // fn setup(
