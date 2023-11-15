@@ -2,20 +2,25 @@ use bevy::{prelude::*, sprite, window::PrimaryWindow, audio};
 use rand::prelude::*;
 
 
-pub const ANT_SIZE: f32 = 64.0 * 0.4;
+pub const ANT_SIZE: f32 = 64.0 * SIZE_MODIFIER;
 pub const ANT_SPEED: f32 = 600.0;
 pub const ENEMY_COUNT: usize = 8;
 pub const ENEMY_SPEED: f32 = 200.0;
-pub const ENEMY_SIZE: f32 = 64.0 * 0.4;
-pub const FOOD: usize = 10;
+pub const ENEMY_SIZE: f32 = 64.0 * SIZE_MODIFIER;
+pub const FOOD_COUNT: usize = 10;
+pub const FOOD_SIZE: f32 = 30.0 * SIZE_MODIFIER;
+
+pub const SIZE_MODIFIER: f32 = 0.4;
 
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, spawn_camera)
-        .add_systems(PostStartup, (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy))
-        .add_systems(Update, (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_player))
+        .add_systems(PostStartup, 
+            (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy, spawn_food))
+        .add_systems(Update, 
+            (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_player))
         .run();
 }
 
@@ -35,6 +40,9 @@ pub struct Employed {
     pub job: Job
 }
 
+#[derive(Component)]
+pub struct Food {}
+
 #[derive(Debug)]
 pub enum Job {
     Worker,
@@ -43,7 +51,14 @@ pub enum Job {
     Larvae,
 }
 
+pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
+    let window: &Window = window_query.get_single().unwrap();
 
+    commands.spawn(Camera2dBundle {
+        transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
+        ..default()
+    });
+}
 
 pub fn spawn_ant(
     mut commands: Commands,
@@ -66,15 +81,6 @@ pub fn spawn_ant(
     );
 }
 
-pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
-    let window: &Window = window_query.get_single().unwrap();
-
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
-        ..default()
-    });
-}
-
 pub fn spawn_enemy(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>, asset_server: Res<AssetServer>) {
     let window = window_query.get_single().unwrap();
 
@@ -91,6 +97,27 @@ pub fn spawn_enemy(mut commands: Commands, window_query: Query<&Window, With<Pri
             Enemy {
                 direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
             },
+        ));
+    }
+}
+
+pub fn spawn_food(
+    mut commands: Commands, 
+    window_query: Query<&Window, With<PrimaryWindow>>, 
+    asset_server: Res<AssetServer>,
+) {
+    let window = window_query.get_single().unwrap();
+    for _ in 0..FOOD_COUNT {
+        let random_x = random::<f32>() * window.width();
+        let random_y = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(random_x, random_y, 0.0).with_scale(Vec3::new(0.4, 0.4, 1.0)),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Food {},
         ));
     }
 }
@@ -215,15 +242,15 @@ pub fn confine_enemy_movement(
         }
 
         //spawns audio if direction is changed
-        if direction_changed {
-            commands.spawn(AudioBundle {
-                source: asset_server.load("audio/pluck_001.ogg"),
-                settings: PlaybackSettings {
-                    mode: audio::PlaybackMode::Despawn,
-                    ..default()
-                }
-            });
-        }
+        // if direction_changed {
+        //     commands.spawn(AudioBundle {
+        //         source: asset_server.load("audio/pluck_001.ogg"),
+        //         settings: PlaybackSettings {
+        //             mode: audio::PlaybackMode::Despawn,
+        //             ..default()
+        //         }
+        //     });
+        // }
         transform.translation = translation;
         enemy.direction = direction;
     }
@@ -256,6 +283,15 @@ pub fn enemy_hit_player(
         }
     }
 }
+
+// pub fn ant_hit_food(
+//     mut commands: Commands,
+//     mut food_query: Query<(Entity, &Transform), With<Food>>,
+//     ant_query: Query<&Ant, With<Ant>>,
+//     asset_server: Res<AssetServer>,
+// ) {
+//     if let Ok(())
+// }
 
 // fn setup(
 //     mut commands: Commands,
