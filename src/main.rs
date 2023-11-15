@@ -7,6 +7,7 @@ pub const ANT_SPEED: f32 = 600.0;
 pub const ENEMY_COUNT: usize = 8;
 pub const ENEMY_SPEED: f32 = 200.0;
 pub const ENEMY_SIZE: f32 = 64.0 * 0.4;
+pub const FOOD: usize = 10;
 
 
 fn main() {
@@ -14,7 +15,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, spawn_camera)
         .add_systems(PostStartup, (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy))
-        .add_systems(Update, (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement))
+        .add_systems(Update, (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_player))
         .run();
 }
 
@@ -225,6 +226,34 @@ pub fn confine_enemy_movement(
         }
         transform.translation = translation;
         enemy.direction = direction;
+    }
+}
+
+pub fn enemy_hit_player(
+    mut commands: Commands,
+    mut ant_query: Query<(Entity, &Transform), With<Ant>>,
+    enemy_query: Query<&Transform, With<Enemy>>,
+    asset_server: Res<AssetServer>,
+) {
+    //.get_single_mut gives us result Type either T or error
+    if let Ok((ant_entity, ant_transform)) = ant_query.get_single_mut() {
+        for enemy_transform in enemy_query.iter() {
+            let distance = ant_transform.translation.distance(enemy_transform.translation);
+            let player_radius = ANT_SIZE / 2.0;
+            let enemy_radius = ENEMY_SIZE / 2.0;
+            if distance < player_radius + enemy_radius {
+                println!("YOU DIED LOL, GET BETTER KID.");
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/explosionCrunch_000.ogg"),
+                    settings: PlaybackSettings {
+                        mode: audio::PlaybackMode::Despawn,
+                        ..default()
+                    }
+                });
+                commands.entity(ant_entity).despawn();
+            }
+
+        }
     }
 }
 
