@@ -20,7 +20,7 @@ fn main() {
         .add_systems(PostStartup, 
             (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy, spawn_food))
         .add_systems(Update, 
-            (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_player))
+            (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_ant, food_hit_ant))
         .run();
 }
 
@@ -256,7 +256,7 @@ pub fn confine_enemy_movement(
     }
 }
 
-pub fn enemy_hit_player(
+pub fn enemy_hit_ant(
     mut commands: Commands,
     mut ant_query: Query<(Entity, &Transform), With<Ant>>,
     enemy_query: Query<&Transform, With<Enemy>>,
@@ -284,14 +284,30 @@ pub fn enemy_hit_player(
     }
 }
 
-// pub fn ant_hit_food(
-//     mut commands: Commands,
-//     mut food_query: Query<(Entity, &Transform), With<Food>>,
-//     ant_query: Query<&Ant, With<Ant>>,
-//     asset_server: Res<AssetServer>,
-// ) {
-//     if let Ok(())
-// }
+pub fn food_hit_ant(
+    mut commands: Commands,
+    // include entity because we going to despawn with commads.entity(food_entity).despawn()
+    mut food_query: Query<(Entity, &Transform), With<Food>>,
+    ant_query: Query<&Transform, With<Ant>>,
+    asset_server: Res<AssetServer>,
+) {
+    // Fetch the ant_transform if it exists
+    if let Some(ant_transform) = ant_query.iter().next() {
+        // Iterate through food entities
+        for (food_entity, food_transform) in food_query.iter_mut() {
+            // Calculate distance between food and ant
+            let distance = food_transform.translation.distance(ant_transform.translation);
+
+            // Further actions with the calculated distance or entities
+            // ...
+
+            // For example, despawning the food_entity if distance meets certain criteria
+            if distance < FOOD_SIZE / 2.0 + ANT_SIZE / 2.0  {
+                commands.entity(food_entity).despawn();
+            }
+        }
+    }
+}
 
 // fn setup(
 //     mut commands: Commands,
