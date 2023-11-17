@@ -1,4 +1,8 @@
-use bevy::{prelude::*, sprite, window::PrimaryWindow, audio};
+use bevy::{prelude::*, sprite, 
+    window::PrimaryWindow, 
+    audio, 
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+};
 use rand::prelude::*;
 
 
@@ -13,14 +17,22 @@ pub const FOOD_SIZE: f32 = 30.0 * SIZE_MODIFIER;
 pub const SIZE_MODIFIER: f32 = 0.4;
 
 
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, spawn_camera)
+        //diagnostic tools
+        .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        
+        .add_systems(Startup, 
+            spawn_camera)
         .add_systems(PostStartup, 
             (print_names, wagie_ants, neet_ants, spawn_ant, spawn_enemy, spawn_food))
         .add_systems(Update, 
             (ant_movement, confine_ant_movement, enemy_movement, confine_enemy_movement, enemy_hit_ant, food_hit_ant))
+
+        .insert_resource(GlobalVolume::new(0.5))
         .run();
 }
 
@@ -261,6 +273,8 @@ pub fn enemy_hit_ant(
     mut ant_query: Query<(Entity, &Transform), With<Ant>>,
     enemy_query: Query<&Transform, With<Enemy>>,
     asset_server: Res<AssetServer>,
+    keyboard_input: Res<Input<KeyCode>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     //.get_single_mut gives us result Type either T or error
     if let Ok((ant_entity, ant_transform)) = ant_query.get_single_mut() {
@@ -280,6 +294,23 @@ pub fn enemy_hit_ant(
                 commands.entity(ant_entity).despawn();
             }
 
+        }
+    } else {
+        if keyboard_input.pressed(KeyCode::R) {
+        let window: &Window = window_query.get_single().unwrap();
+
+        commands.spawn(
+        (
+            SpriteBundle {
+                transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0).with_scale(Vec3::new(0.4, 0.4, 1.0)),
+                texture: asset_server.load("sprites/ball_blue_large.png"),
+                ..default()
+            },
+            Ant {
+                name : "Eve".to_string()
+            },
+        )
+    );
         }
     }
 }
@@ -304,6 +335,13 @@ pub fn food_hit_ant(
             // For example, despawning the food_entity if distance meets certain criteria
             if distance < FOOD_SIZE / 2.0 + ANT_SIZE / 2.0  {
                 commands.entity(food_entity).despawn();
+                commands.spawn(AudioBundle {
+                    source: asset_server.load("audio/laserLarge_000.ogg"),
+                    settings: PlaybackSettings {
+                        mode: audio::PlaybackMode::Despawn,
+                        ..default()
+                    }
+                });
             }
         }
     }
